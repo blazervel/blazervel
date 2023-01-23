@@ -40,7 +40,8 @@ export default (options: BlazerelConfigProps) => ({
       ...(config.resolve.alias || {}),
       '@tightenco/ziggy': `${basePath}/vendor/tightenco/ziggy/src/js`,
       '@blazervel': `${packagePath}/resources/js`,
-      '@pckg': `${basePath}/node_modules`
+      '@pckg': `${basePath}/node_modules`,
+      '@': path.resolve('./resources/js'),
     }
 
     if (mode !== 'development') {

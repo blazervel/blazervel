@@ -1,24 +1,33 @@
 <?php
 
-namespace Blazervel\Blazervel\Console;
+namespace Blazervel\Blazervel\Console\Commands;
 
+use Illuminate\Support\Facades\File;
 use Illuminate\Console\Concerns\CreatesMatchingTest;
 use Illuminate\Console\GeneratorCommand;
 
-class MakeAnonymousActionCommand extends GeneratorCommand
+class MakeActionCommand extends GeneratorCommand
 {
     use CreatesMatchingTest;
 
-    protected $name = 'make:blazervel:anonymous';
+    protected $name = 'blazervel:make:action';
 
-    protected $description = 'Create a new Blazervel Action (anonymous class)';
+    protected $description = 'Create a new Blazervel Action';
 
-    protected $type = 'Blazervel Action (anonymous class)';
+    protected $type = 'Blazervel Action';
+
+    protected bool $anonymous = false;
 
     protected function getStub()
     {
+        if ($this->anonymous === true) {
+            return $this->resolveStubPath(
+                "/../stubs/anonymous-action.stub"
+            );
+        }
+
         return $this->resolveStubPath(
-            "/stubs/action.anonymous.stub"
+            "/../stubs/action.stub"
         );
     }
 
@@ -37,6 +46,6 @@ class MakeAnonymousActionCommand extends GeneratorCommand
 
     protected function getDefaultNamespace($rootNamespace)
     {
-        return $rootNamespace.'\Actions';
+        return "{$rootNamespace}\Actions\Blazervel";
     }
 }

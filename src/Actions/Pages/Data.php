@@ -3,7 +3,7 @@
 namespace Blazervel\Blazervel\Actions\Pages;
 
 use Blazervel\Blazervel\Action;
-use Blazervel\Blazervel\Actions\Handle;
+use Blazervel\Blazervel\Actions\ResolveAction;
 use Blazervel\Blazervel\Support\Actions;
 use Blazervel\Blazervel\Actions\Config;
 use Blazervel\Blazervel\WithBlazervel;
@@ -18,7 +18,7 @@ class Data extends Action
         $action    = Actions::urlAction($url);
         $params    = Actions::urlParams($url);
         $component = Actions::actionComponent($action);
-        $response  = Handle::run(new Request($params), $action);
+        $response  = ResolveAction::run(new Request($params), $action);
 
         $data = [
             'action' => $action,

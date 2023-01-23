@@ -2,64 +2,44 @@
 
 namespace Blazervel\Blazervel\Providers;
 
-use Blazervel\Blazervel\Actions\Pages;
-use Blazervel\Blazervel\Console\MakeActionCommand;
-use Blazervel\Blazervel\Console\MakeAnonymousActionCommand;
+use Blazervel\Blazervel\Console\Commands\MakeActionCommand;
 use Blazervel\Blazervel\Console\Commands\BuildCommand;
+use Blazervel\Blazervel\Console\Commands\MakeAnonymousActionCommand;
+use Blazervel\Blazervel\Console\Commands\MakeControllerCommand;
 use Blazervel\Blazervel\Support\Actions;
-use Blazervel\Blazervel\Support\ActionRoutes;
-use Illuminate\Routing\Router;
+use Blazervel\Blazervel\Support\ApiRoutes;
 use Illuminate\Foundation\AliasLoader;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\ServiceProvider as BaseServiceProvider;
 
 class ServiceProvider extends BaseServiceProvider
 {
     public function register()
     {
-        $this
-            ->ensureDirectoryExists()
-            ->registerAnonymousClassAliases()
-            ->registerRouterMacro();
+        $this->registerAnonymousClassAliases();
     }
 
     public function boot()
     {
         $this
             ->loadViews()
-            ->loadConfig()
-            ->loadCommands();
-    }
-
-    private function ensureDirectoryExists(): self
-    {
-        File::ensureDirectoryExists(
-            Actions::dir()
-        );
-
-        return $this;
-    }
-
-    private function loadConfig(): self
-    {
-        $this->publishes([
-            static::path('config/blazervel.php') => config_path('blazervel.php'),
-        ], 'blazervel');
-
-        return $this;
+            ->loadCommands()
+            ->loadRoutes();
     }
 
     private function loadCommands(): self
     {
-        if ($this->app->runningInConsole()) {
-            $this->commands([
-                MakeAnonymousActionCommand::class,
-                MakeActionCommand::class,
-                BuildCommand::class
-            ]);
+        if (! $this->app->runningInConsole()) {
+            return $this;
         }
+
+        $this->commands([
+            MakeControllerCommand::class,
+            MakeActionCommand::class,
+            MakeAnonymousActionCommand::class,
+            BuildCommand::class
+        ]);
 
         return $this;
     }
@@ -103,21 +83,9 @@ class ServiceProvider extends BaseServiceProvider
         return $this;
     }
 
-    private function registerRouterMacro(): self
-    {
-        Router::macro('blazervel', fn ($uri, $component, $props = []) => (
-            $this
-                ->match(['POST', 'GET', 'HEAD'], $uri, Pages\Show::class)
-                ->defaults('component', $component)
-                ->defaults('props', $props)
-        ));
-
-        return $this;
-    }
-
     private function loadRoutes(): self
     {
-        ActionRoutes::register();
+        ApiRoutes::register();
 
         return $this;
     }

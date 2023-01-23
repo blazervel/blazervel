@@ -1,24 +1,25 @@
 <?php
 
-namespace Blazervel\Blazervel\Console;
+namespace Blazervel\Blazervel\Console\Commands;
 
+use Illuminate\Support\Facades\File;
 use Illuminate\Console\Concerns\CreatesMatchingTest;
 use Illuminate\Console\GeneratorCommand;
 
-class MakeActionCommand extends GeneratorCommand
+class MakeControllerCommand extends GeneratorCommand
 {
     use CreatesMatchingTest;
 
-    protected $name = 'make:blazervel';
+    protected $name = 'blazervel:make';
 
-    protected $description = 'Create a new Blazervel Action';
+    protected $description = 'Create a new Blazervel Controller';
 
-    protected $type = 'Blazervel Action';
+    protected $type = 'Blazervel Controller';
 
     protected function getStub()
     {
         return $this->resolveStubPath(
-            "/stubs/action.stub"
+            "/../stubs/controller.stub"
         );
     }
 
@@ -37,6 +38,6 @@ class MakeActionCommand extends GeneratorCommand
 
     protected function getDefaultNamespace($rootNamespace)
     {
-        return $rootNamespace.'\Actions';
+        return "{$rootNamespace}\Http\Blazervel";
     }
 }

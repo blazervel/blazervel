@@ -4,6 +4,7 @@ namespace Blazervel\Blazervel\Console\Commands;
 
 use Blazervel\Blazervel\Actions\Config\Actions;
 use Blazervel\Blazervel\Actions\Config\Controllers;
+use Blazervel\Blazervel\Actions\Config\BlazervelControllers;
 use Blazervel\Blazervel\Actions\Config\Jobs;
 use Blazervel\Blazervel\Actions\Config\Translations;
 use Blazervel\Blazervel\Actions\Config\Routes;
@@ -44,9 +45,10 @@ class BuildCommand extends Command
             Translations::class,
             Routes::class,
             Models::class,
-            Notifications::class,
-            Actions::class,
-            Jobs::class,
+            BlazervelControllers::class,
+            // Notifications::class,
+            // Actions::class,
+            // Jobs::class,
         ])->each(fn ($helper) => (
             file_put_contents(
                 "{$directory}/{$helper::outputFileName()}",

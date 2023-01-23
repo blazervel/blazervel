@@ -1,5 +1,5 @@
 import React from '@pckg/preact/compat'
-import { Button } from '@blazervel-ui/components'
+// import { Button } from '@blazervel-ui/components'
 
 interface Props {
   status: number
@@ -34,14 +34,14 @@ export default function ({
           <p className="mt-2 text-lg font-medium text-chrome-900 text-opacity-50">
             {message}
           </p>
-          <div className="mt-6">
+          {/* <div className="mt-6">
             <Button
               className="border-none"
               icon="home"
               iconType="outline"
               route="/"
               text={lang('blazervel::errors.take_me_home')} />
-          </div>
+          </div> */}
         </div>
       </main>
     </div>

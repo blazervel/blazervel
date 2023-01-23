@@ -5,13 +5,10 @@ namespace Blazervel\Blazervel\Support;
 use Blazervel\Blazervel\Actions as ActionActions;
 use Blazervel\Blazervel\Actions\Models as ModelActions;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Config;
 
-class ActionRoutes
+class ApiRoutes
 {
     private string $endpointPrefix = '/api/blazervel';
-
-    private array $middleware = ['api'];
 
     public static function register(): void
     {
@@ -20,7 +17,7 @@ class ActionRoutes
 
     public function registerRoutes(): void
     {
-        Route::middleware($this->middleware)->group(function () {
+        Route::middleware('api')->group(function () {
             Route::prefix($this->endpointPrefix)->group(function() {
                 // Model Action Routes
                 Route::get(   'models/{model}',             ModelActions\Index::class);
@@ -31,13 +28,22 @@ class ActionRoutes
                 Route::post(  'models/{model}/{id}/notify', ModelActions\Notify::class);
 
                 // Action Routes
-                Route::post(  'actions/{action}',           ActionActions\Handle::class);
-                Route::get(   'actions/{action}',           ActionActions\Handle::class);
+                Route::post(  'actions/{action}',           ActionActions\ResolveAction::class);
+                Route::get(   'actions/{action}',           ActionActions\ResolveAction::class);
                 Route::post(  'batch',                      ActionActions\Batch::class);
                 Route::get(   'batch',                      ActionActions\Batch::class);
                 Route::post(  'run-actions',                ActionActions\RunActions::class);
                 Route::get(   'run-actions',                ActionActions\RunActions::class);
+
+                // Controller Routes
+                Route::post(  'controllers/{action}',       ActionActions\ResolveControllerAction::class);
+                Route::get(   'controllers/{action}',       ActionActions\ResolveControllerAction::class);
             });
         });
+
+        // Need to deprioritize this catch-all to be after main routes
+        // Route::middleware('web')->group(function () {
+        //     Route::any('{any}', ActionActions\ResolveController::class)->where('any', '.*');
+        // });
     }
 }

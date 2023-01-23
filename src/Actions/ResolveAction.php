@@ -8,7 +8,7 @@ use Exception;
 use Illuminate\Http\Request;
 use ReflectionMethod;
 
-class Handle
+class ResolveAction
 {
     public static function run(Request $request, string $action)
     {

@@ -2,7 +2,6 @@ import { useEffect, useState } from '@pckg/preact/compat'
 import blazervel from '../app/blazervel'
 import { config, lang, route } from '@blazervel'
 
-
 window.lang = lang(config.translations)
 window.route = route(config.routes)
 

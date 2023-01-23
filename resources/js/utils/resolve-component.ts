@@ -3,19 +3,14 @@ export function resolveComponent(name: string): any {
   let components,
       alias = '@'
 
-  if (name.includes('@blazervel-ui')) {
-
-    components = import.meta.glob('@blazervel-ui/**/*.*')
-    alias = '@blazervel-ui'
-
-  } else if (name.includes('@blazervel')) {
+  if (name.includes('@blazervel')) {
 
     components = import.meta.glob('@blazervel/**/*.*')
     alias = '@blazervel'
 
   } else {
 
-    components = import.meta.glob('./**/*.*')
+    components = import.meta.glob('@/**/*.*')
 
   }
 
@@ -42,7 +37,6 @@ const componentLookup = (components, name) => {
 
     page = components[path]
     page = typeof page === 'function' ? page() : page
-    page = page.default || page
 
     break
   }
