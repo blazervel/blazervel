@@ -5,7 +5,10 @@ namespace Blazervel\Blazervel\Support;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
+use ReflectionClass;
+use ReflectionMethod;
 use Symfony\Component\Finder\Finder;
 
 class Actions
@@ -20,6 +23,105 @@ class Actions
         return (new Collection(explode('/', static::dir())))
                     ->map(fn ($slug) => Str::ucfirst(Str::camel($slug)))
                     ->join('\\');
+    }
+
+    public static function routes(): Collection
+    {
+        $webPrefix = 'App\\Actions\\Blazervel\\Http\\';
+        $apiPrefix = 'App\\Actions\\Blazervel\\Api\\';
+        $routedActions = static::classes()->filter(fn ($filePath, $class) => (
+            Str::startsWith($class, $webPrefix) ||
+            Str::startsWith($class, $apiPrefix)
+        ));
+        $middlewares = [
+            $webPrefix => ['web'],
+            $apiPrefix => ['api']
+        ];
+        $methods = [
+            'show' => 'get',
+            'index' => 'get',
+            'create' => 'get',
+            'edit' => 'get',
+            'update' => 'put',
+            'store' => 'post',
+            'delete' => 'delete',
+            'destroy' => 'delete'
+        ];
+
+        $routes = $routedActions->map(function ($filePath, $action) use ($webPrefix, $apiPrefix, $middlewares, $methods) {
+
+            $lookupKeyName = 'id';
+
+            $slug = Str::lower(class_basename($action));
+
+            $method = $methods[$slug] ?? 'get';
+            
+            $middleware = Str::startsWith($action, $webPrefix)
+                ? $middlewares[$webPrefix]
+                : $middlewares[$apiPrefix];
+
+            $name = Str::startsWith($action, $webPrefix)
+                ? Str::remove($webPrefix, $action)
+                : Str::remove($apiPrefix, $action);
+
+            $name = explode('\\', $name);
+            $name = collect($name)->map(fn ($p) => Str::snake($p, '-'))->join('.');
+
+            if (! defined("{$action}::route") || ! ($path = $action::route ?? false)) {
+
+                $path = Str::replace('.', '/', $name);
+
+                if (in_array($slug, array_keys($methods))) {
+                    $path = rtrim($path, $slug);
+                }
+
+                if (in_array($slug, [
+                    'show',
+                    'update',
+                    'edit',
+                    'destroy',
+                    'delete',
+                ])) {
+                    $dirName = Str::singular(basename($path));
+
+                    if (class_exists('App\\Models\\' . Str::camel(Str::ucfirst($dirName)))) {
+                        $lookupKeyName = Str::replace('-', '_', $dirName);
+                    }
+
+                    $path = $path.'{'.$lookupKeyName.'}';
+                }
+
+                // Smartly add other params to url based on action parameters
+                // e.g. teams/users/show => teams/{team}/users/{user}
+                // $parameters = (new ReflectionClass($action))->getMethod('__invoke')->getParameters();
+                // $parameters = (
+                //     collect($parameters)
+                //         ->filter(fn ($p) => ! in_array($p->getType()->getName(), [
+                //             'Illuminate\Http\Request'
+                //         ]))
+                //         ->map(fn ($p) => $p->getName())
+                // );
+            }
+
+            return compact('middleware', 'method', 'path', 'action', 'name');
+        });
+
+        return $routes;
+    }
+
+    public static function registerRoutes(): void
+    {
+        static::routes()->each(function ($route) {
+            $router = Route::middleware($route['middleware']);
+            $method = $route['method'];
+
+            $router->$method(
+                $route['path'],
+                $route['action']
+            )->name(
+                $route['name']
+            );
+        });
     }
 
     public static function urlRoute(string $url, string $method = 'GET')
