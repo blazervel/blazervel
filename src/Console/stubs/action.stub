@@ -6,7 +6,7 @@ use Blazervel\Blazervel\Action;
 
 class {{ class }} extends Action
 {
-    public function handle()
+    public function __invoke()
     {
         //
     }
