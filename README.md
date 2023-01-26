@@ -9,10 +9,10 @@ A home for _all_ of your business logic. Actions are more intuitive for writing 
 
 Generate a new action class using the make command: `blazervel:make Teams/Update`
 
-```
+```php
 // app/Actions/Blazervel/Teams/Update.php
 
-<?php
+<?php declare (strict_types=1);
 
 namespace App\Actions\Blazervel\Teams;
 
@@ -44,10 +44,10 @@ That's it! After building a few Laravel apps, I'm sure you realize how much time
 
 Generate a new _anonymous_ action class using the make command: `blazervel:make:anonymous Teams/Update`
 
-```
+```php
 // app/Actions/Blazervel/Teams/Update.php
 
-<?php
+<?php declare (strict_types=1);
 
 return new class extends BlazervelAction
 {
@@ -79,7 +79,7 @@ $this->authorize(
 Blazervel gets the data from the current request and validates it using the corresponding **Contract** (e.g. app/Contracts/TeamContract - _more about Contracts later!_).
 
 But again, just like `authorize()`, if you do need to override with your own parameters...
-```
+```php
 $this->validate(
     rules: ['name' => 'required|string|max:255']
     data: $request->only('name')
@@ -89,24 +89,26 @@ $this->validate(
 ### Feature Folder Structure
 Organize your actions into features and subfeatures (and - if you want - into subsubfeatures, subsubsubfeatures, and so on). Anonymous classes still work, and so do smart routes (will get to those in a second).
 ```
-app/Actions/Blazervel/...
+app/Actions/Blazervel...
 
-- Teams
---- Index.php
---- Update.php
---- Invitations
------ Send.php
------ Approve.php
+├── Teams
+│   ├── Index.php
+│   └── Update.php
+│   ├── Invitations
+│   │   ├── Create.php
+│   │   └── Approve.php
 ```
 
 ### Automatic Routes
-Blazervel will automatically register routes for any actions that are named according to standard CRUD actions (e.g. Create, Show, Update, Destroy/Delete, Edit, Index). You don't need to do anything to configure this. If you want to override or disable route generation for a class, do so with the following constants on the class (we've chosen to use constants here to avoid unnecessary class instantiations).
-```
+Blazervel will automatically register routes for any actions that are named according to standard CRUD actions (e.g. Create, Show, Update, Destroy/Delete, Edit, Index). You don't need to do anything to configure this. If you want to override or disable route generation for a class, do so with the following protected properties on the class.
+```php
 return new class extends BlazervelAction
 {
-    const route = 'teams/{team}';
-    const method = 'put';
-    const middleware = ['web'];
+    protected string $route = 'teams/{team}';
+
+    protected string $httpMethod = 'put';
+
+    protected string|array $middleware = 'web';
 
     ...
 }

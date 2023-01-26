@@ -1,4 +1,4 @@
-<?php
+<?php declare (strict_types=1);
 
 namespace Blazervel\Blazervel\Models\Traits;
 
@@ -13,6 +13,8 @@ trait WithLookupByUuid
 
     protected static function booted()
     {
+        parent::booted();
+        
         static::creating(function ($model) {
             $model->uuid = (string) Str::orderedUuid();
         });

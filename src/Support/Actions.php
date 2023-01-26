@@ -1,4 +1,4 @@
-<?php
+<?php declare (strict_types=1);
 
 namespace Blazervel\Blazervel\Support;
 
@@ -6,7 +6,9 @@ use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
+use Blazervel\Blazervel\Objects\ActionMeta;
 use ReflectionClass;
+use ReflectionProperty;
 
 class Actions
 {
@@ -15,34 +17,20 @@ class Actions
         return 'app/Actions/Blazervel';
     }
 
-    public static function namespace(): string
+    public static function dirNamespace(string $dir): string
     {
         return
-            (new Collection(explode('/', static::dir())))
+            (new Collection(explode('/', $dir)))
                 ->map(fn ($slug) => Str::ucfirst(Str::camel($slug)))
                 ->join('\\');
     }
-
-    protected static function getConstant(string $action, string $constant, string|array $default): string|array
+    
+    /**
+     * @return string[]
+     */
+    protected static function commonActionMethods(): array
     {
-        $value = null;
-
-        if (defined("{$action}::{$constant}")) {
-            $value = $action::$constant;
-        }
-
-        return $value ?: $default;
-    }
-
-    public static function meta(string $action): object
-    {
-        $namespace = static::namespace();
-        $explodedAction = explode('\\', Str::remove($namespace . '\\', $action));
-        $actionFromNamespace = Str::singular(array_pop($explodedAction));
-        $modelFromNamespace = Str::camel(array_pop($explodedAction));
-        $modelFromNamespace = class_exists("App\\Models\\{$modelFromNamespace}") ? $modelFromNamespace : null;
-        $routePath = collect($explodedAction)->map(fn ($p) => Str::snake($p, '-'))->join('/');
-        $commonActionMethods = [
+        return [
             'show' => 'get',
             'index' => 'get',
             'create' => 'get',
@@ -52,33 +40,75 @@ class Actions
             'delete' => 'delete',
             'destroy' => 'delete',
         ];
-        $routeMethod = $commonActionMethods[Str::lower($actionFromNamespace)] ?: 'get';
-        $actionSlug = Str::lower(Str::snake(class_basename($action), '-'));
+    }
 
-        $name = Str::remove($namespace . '\\', $action);
-        $name = explode('\\', $name);
-        $name = collect($name)->map(fn ($p) => Str::snake($p, '-'))->join('.');
-
-        $route = Str::replace('.', '/', $name);
-
-        if (in_array($actionSlug, array_keys($commonActionMethods))) {
-            $route = rtrim($route, $actionSlug);
-        }
-
-        if (in_array($actionSlug, [
+    /**
+     * @return string[]
+     */
+    protected static function commonLookupActions(): array
+    {
+        return [
             'show',
             'update',
             'edit',
             'destroy',
             'delete',
-        ])) {
-            $dirName = Str::singular(basename($route));
+        ];
+    }
 
-            if (class_exists('App\\Models\\'.Str::camel(Str::ucfirst($dirName)))) {
-                $lookupKeyName = Str::replace('-', '_', $dirName);
+    protected static function getPredefinedProperty(string $action, string $property, string|array $default = null): string|array|null
+    {
+        $properties = (new ReflectionClass($action))->getProperties(ReflectionProperty::IS_PROTECTED);
+        
+        $value = (
+            collect($properties)
+                ->filter(fn ($p) => $p->hasDefaultValue() && $p->getName() === $property)
+                ->map(fn ($p) => $p->getDefaultValue())
+                ->first()
+        );
+
+        return $value ?: $default;
+    }
+
+    public static function meta(string $action): ActionMeta
+    {
+        $dir = static::dir();
+        $namespace = static::dirNamespace($dir);
+        $commonActionMethods = static::commonActionMethods();
+        $explodedAction = explode('\\', Str::remove($namespace . '\\', $action));
+
+        $defaultRoute = collect($explodedAction)->map(fn ($p) => Str::snake($p, '-'))->join('/');
+        $routeName = Str::replace('/', '.', $defaultRoute);
+        $route = static::getPredefinedProperty($action, 'route');
+
+        $actionName = Str::singular(array_pop($explodedAction));
+        $actionSlug = Str::snake($actionName, '-');
+
+        $modelClass = Str::singular(Str::ucfirst(Str::camel(array_pop($explodedAction))));
+        $modelClass = "App\\Models\\{$modelClass}";
+        $modelClass = class_exists($modelClass) ? $modelClass : null;
+
+        $httpMethod = $commonActionMethods[Str::lower($actionName)] ?? null;
+
+        if (! $route) {
+
+            $route = $defaultRoute;
+
+            if (in_array($actionSlug, array_keys($commonActionMethods))) {
+                $route = rtrim($route, $actionSlug);
             }
 
-            $route = "$route/\{$lookupKeyName\}";
+            // Set route parameter for common lookup actions
+            if (in_array($actionSlug, static::commonLookupActions())) {
+                $lookupKeyName = 'id';
+
+                if ($modelClass !== null) {
+                    $lookupKeyName = Str::snake(class_basename($modelClass));
+                }
+
+                $route = $route.'{'.$lookupKeyName.'}';
+            }
+
         }
 
         // Smartly add other params to url based on action parameters
@@ -92,23 +122,19 @@ class Actions
                 ->map(fn ($p) => $p->getName())
         );
 
-        $parameters->each(fn ($p) => $route = Str::replace(($s = Str::plural($p)), "$s/\{$p\}", $route));
+        $parameters->each(fn ($p) => $route = Str::replace(($s = Str::plural($p)), $s.'{'.$p.'}', $route));
 
-        return (object) [
-            'name' => $actionFromNamespace,
-            'slug' => Str::snake($actionFromNamespace, '-'),
-            'model' => $modelFromNamespace,
-            'modelParamater' => '{' . Str::snake($modelFromNamespace, '_') . '}',
-            'route' => (object) [
-                'middleware' => static::getConstant($action, 'route', ['web']),
-                'method' => static::getConstant($action, 'method', $routeMethod),
-                'path' => static::getConstant($action, 'route', $routePath),
-                'name' => Str::replace('/', '.', $routePath),
-            ],
-        ];
+        return new ActionMeta(
+            action: $action,
+            model: $modelClass,
+            route: $route,
+            routeName: $routeName,
+            httpMethod: static::getPredefinedProperty($action, 'method', $httpMethod),
+            middleware: static::getPredefinedProperty($action, 'middleware', ['web']),
+        );
     }
 
-    public static function actionParams(string $action): array
+    public static function params(string $action): array
     {
         $except = [
             'Illuminate\Http\Request',
@@ -125,62 +151,34 @@ class Actions
 
     public static function registerRoutes(): void
     {
-        $routes = static::classes()->map(fn ($fp, $action) => static::meta($action));
+        $dir = static::dir();
+        $actionMetas = (
+            static::classes($dir)
+                ->map(fn ($fp, $action) => static::meta($action))
+                ->filter(fn ($am) => $am->hasRoute())
+        );
 
-        $routes->each(function ($route) {
-            $router = Route::middleware($route['middleware']);
-            $method = $route['method'];
+        $actionMetas->each(function ($meta) {
+            $method = $meta->httpMethod;
 
-            $router->$method(
-                $route['route'],
-                $route['action']
-            )->name(
-                $route['name']
-            );
+            Route::middleware($meta->middleware)
+                ->$method($meta->route, $meta->action)
+                ->name($meta->routeName);
         });
     }
 
-    public static function keyAction(string $actionKey): string
+    public static function classes(string $dir): Collection
     {
-        // Support blazervel package actions
-        if (Str::startsWith($actionKey, 'blazervel-')) {
-            $actionsNamespace = '';
-        } else {
-            $actionsNamespace = static::dir();
-            $actionsNamespace = explode('/', $actionsNamespace);
-            $actionsNamespace = collect($actionsNamespace)->map(fn ($an) => Str::ucfirst(Str::camel($an)))->join('\\');
-            $actionsNamespace = "\\{$actionsNamespace}";
-        }
-
-        $actionClass = explode('-', $actionKey);
-        $actionClass = collect($actionClass)->map(fn ($ac) => Str::ucfirst(Str::camel($ac)))->join('\\');
-        $actionClass = "{$actionsNamespace}\\{$actionClass}";
-
-        return $actionClass;
-    }
-
-    public static function actionKey(string $action): string
-    {
-        $key = Str::remove(Actions::namespace().'\\', $action);
-        $key = explode('\\', $key);
-        $key = collect($key)->map(fn ($key) => Str::camel($key));
-
-        return $key->join('-');
-    }
-
-    public static function classes(): Collection
-    {
-        $actionsDir = static::dir();
-        $actionsNamespace = static::namespace();
+        $namespace = collect(explode('/', $dir))->map('ucfirst')->join('\\');
         $classNames = [];
-        $files = (new Filesystem)->allFiles(base_path($actionsDir));
+        $files = (new Filesystem)->allFiles(base_path($dir));
 
         foreach ($files as $file) {
             $path = $file->getPathName();
-            $className = explode("{$actionsDir}/", $path)[1];
+            $className = explode("{$dir}/", $path)[1];
             $className = Str::remove('.php', $className);
             $className = Str::replace('/', '\\', $className);
-            $className = "{$actionsNamespace}\\{$className}";
+            $className = "{$namespace}\\{$className}";
 
             $classNames[$className] = $path;
         }
@@ -190,24 +188,26 @@ class Actions
 
     public static function anonymousClasses(): Collection
     {
-        $actions = [];
+        $dir = static::dir();
 
-        foreach (static::classes() as $className => $path) {
-            if (gettype(
-                $class = require($path)
-            ) !== 'object') {
-                continue;
-            }
+        return (
+            static::classes($dir)
+                ->map(function ($path, $className): null|array {
 
-            $class = get_class($class);
+                    if (gettype($class = require($path)) !== 'object') {
+                        return null;
+                    }
 
-            if (! Str::contains($class, '@anonymous')) {
-                continue;
-            }
+                    $class = get_class($class);
 
-            $actions[$className] = $class;
-        }
+                    if (! Str::contains($class, '@anonymous')) {
+                        return null;
+                    }
 
-        return new Collection($actions);
+                    return [$className => $class];
+                })
+                ->whereNotNull()
+                ->collapse()
+        );
     }
 }
