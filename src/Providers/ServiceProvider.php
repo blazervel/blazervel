@@ -2,14 +2,13 @@
 
 namespace Blazervel\Blazervel\Providers;
 
+use Blazervel\Blazervel\Action;
 use Blazervel\Blazervel\Console\Commands\MakeActionCommand;
 use Blazervel\Blazervel\Console\Commands\MakeAnonymousActionCommand;
-use Blazervel\Blazervel\Console\Commands\MakeControllerCommand;
 use Blazervel\Blazervel\Support\Actions;
 use Illuminate\Foundation\AliasLoader;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\ServiceProvider as BaseServiceProvider;
+use Illuminate\Support\Str;
 
 class ServiceProvider extends BaseServiceProvider
 {
@@ -32,9 +31,8 @@ class ServiceProvider extends BaseServiceProvider
         }
 
         $this->commands([
-            MakeControllerCommand::class,
             MakeActionCommand::class,
-            MakeAnonymousActionCommand::class
+            MakeAnonymousActionCommand::class,
         ]);
 
         return $this;
@@ -42,28 +40,16 @@ class ServiceProvider extends BaseServiceProvider
 
     private function registerAnonymousClassAliases(): self
     {
-        $this->app->booting(function ($app) {
+        $anonymousActionClasses = Actions::anonymousClasses();
+
+        $this->app->booting(function ($app) use ($anonymousActionClasses) {
             $loader = AliasLoader::getInstance();
 
-            collect([
-                'Blazervel\\Controller' => \Blazervel\Blazervel\Action::class,
-                'Blazervel\\Action' => \Blazervel\Blazervel\Action::class,
-                'B' => \Blazervel\Blazervel\Support\Helpers::class,
-            ])->map(fn ($class, $namespace) => (
-                $loader->alias(
-                    $namespace,
-                    $class
-                )
-            ));
+            $loader->alias('BlazervelAction', Action::class);
 
-            if (Config::get('blazervel.actions.anonymous_classes', true)) {
-                Actions::anonymousClasses()->map(fn ($class, $namespace) => (
-                    $loader->alias(
-                        $namespace,
-                        $class
-                    )
-                ));
-            }
+            $anonymousActionClasses->map(fn ($class, $namespace) => (
+                $loader->alias($namespace, $class)
+            ));
         });
 
         return $this;
@@ -76,11 +62,11 @@ class ServiceProvider extends BaseServiceProvider
         return $this;
     }
 
-    static function path(string ...$path): string
+    public static function path(string ...$path): string
     {
-        return join('/', [
+        return implode('/', [
             Str::remove('src/Providers', __DIR__),
-            ...$path
+            ...$path,
         ]);
     }
 }

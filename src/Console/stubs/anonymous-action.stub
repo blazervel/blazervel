@@ -1,8 +1,6 @@
 <?php
 
-use Blazervel\Blazervel\Action;
-
-return new class extends Action
+return new class extends BlazervelAction
 {
     public function __invoke()
     {
