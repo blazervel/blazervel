@@ -28,7 +28,7 @@ class Update extends Action
 ```
 
 ### _Anonymous_ Actions (expirimental)
-What started out as an expirement, is quickly turning into a core part of the workflow. Using Laravel's `Illuminate\Foundation\AliasLoader` helper, Blazervel is able to alias namespaces to anonymous action classes based on their file path. This was inspired by [Laravel 9's use of anonymous classes for migrations](https://github.com/laravel/laravel/blob/9.x/database/migrations/2014_10_12_000000_create_users_table.php). 
+Using Laravel's `Illuminate\Foundation\AliasLoader` helper, Blazervel is able to alias namespaces to anonymous action classes based on their file path. This was inspired by [Laravel 9's use of anonymous classes for migrations](https://github.com/laravel/laravel/blob/9.x/database/migrations/2014_10_12_000000_create_users_table.php). 
 
 I find that I'm renaming classes quite often - especially for brand new builds. Whether it's because of a typo, new standardization rules, or I just want to duplicate one class as a starting point for another.
 
@@ -49,7 +49,7 @@ Generate a new _anonymous_ action class using the make command: `blazervel:make:
 
 <?php declare (strict_types=1);
 
-return new class extends BlazervelAction
+return new class extends \Blazervel\Blazervel\Action
 {
     public function __invoke()
     {
@@ -57,6 +57,11 @@ return new class extends BlazervelAction
     }
 };
 ```
+
+#### Transpiling Anonymous Classes
+The problem with this approach is that intelephense will not autocomplete these classes for you, and it will show a "class is undefined" error wherever they are referenced in your code. To address this, Blazervel includes a console command for transpiling anonymous classes to regular ones.
+
+Transpile _anonymous_ action classes using this command: `blazervel:transpile:anonymous`
 
 ### Action Helpers
 Blazervel's abstract action class gives you access to a few helper methods too!
@@ -102,7 +107,9 @@ app/Actions/Blazervel...
 ### Automatic Routes
 Blazervel will automatically register routes for any actions that are named according to standard CRUD actions (e.g. Create, Show, Update, Destroy/Delete, Edit, Index). You don't need to do anything to configure this. If you want to override or disable route generation for a class, do so with the following protected properties on the class.
 ```php
-return new class extends BlazervelAction
+<?php declare (strict_types=1);
+
+class Update extends Action
 {
     protected string $route = 'teams/{team}';
 
