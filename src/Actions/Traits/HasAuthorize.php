@@ -6,11 +6,12 @@ use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Auth\User;
 use Blazervel\Blazervel\Support\Actions;
+use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Gate;
 
 trait HasAuthorize
 {
-    protected function authorize(Model $model = null, User $user = null, string $action = null): void
+    final protected function authorize(Model $model = null, User $user = null, string $action = null): void
     {
         $meta = Actions::meta(get_called_class());
 
@@ -19,9 +20,11 @@ trait HasAuthorize
                 "Blazervel says \"I tried authorizing a model based on this action's namespace but one doesn't exist...\""
             );
         }
+
+        $request = Request::instance();
         
         Gate::forUser(
-            $user ?: request()->user()
+            $user ?: $request->user()
         )->authorize(
             $action ?: $meta->action,
             $model ?: $meta->model ?: $meta->modelClass

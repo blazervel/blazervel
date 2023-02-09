@@ -2,6 +2,7 @@
 
 namespace Blazervel\Blazervel\Support;
 
+use Blazervel\Blazervel\Action;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Route;
@@ -116,7 +117,7 @@ class Actions
         $parameters = (new ReflectionClass($action))->getMethod('__invoke')->getParameters();
         $parameters = (
             collect($parameters)
-                ->filter(fn ($p) => ! in_array($p->getType()->getName(), [
+                ->filter(fn ($p) => ($type = $p->getType()) && ! in_array($type->getName(), [
                     'Illuminate\Http\Request',
                 ]))
                 ->map(fn ($p) => $p->getName())
@@ -144,7 +145,7 @@ class Actions
 
         return
             collect($parameters)
-                ->filter(fn ($p) => ! in_array($p->getType()->getName(), $except))
+                ->filter(fn ($p) => ($type = $p->getType()) && ! in_array($type->getName(), $except))
                 ->map(fn ($p) => $p->getName())
                 ->all();
     }
@@ -169,7 +170,7 @@ class Actions
 
     public static function classes(string $dir): Collection
     {
-        $namespace = collect(explode('/', $dir))->map('ucfirst')->join('\\');
+        $namespace = static::dirNamespace($dir);
         $classNames = [];
         $files = (new Filesystem)->allFiles(base_path($dir));
 
@@ -186,25 +187,54 @@ class Actions
         return collect($classNames);
     }
 
+    protected static function fileContainsAnonymousClass(string $path): bool
+    {
+        $isAnonymous = false;
+        $fp = fopen($path, 'r');
+
+        while (($buffer = fgets($fp, 100)) !== false) {
+            if (Str::startsWith($buffer, 'return new class')) {
+                $isAnonymous = true;
+                break;
+            }
+            if (Str::startsWith($buffer, 'return new class')) {
+                $isAnonymous = false;
+                break;
+            }
+        }
+
+        fclose($fp);
+
+        return $isAnonymous;
+    }
+
     public static function anonymousClasses(): Collection
     {
         $dir = static::dir();
 
         return (
             static::classes($dir)
-                ->map(function ($path, $className): null|array {
+                ->filter(fn ($path, $className) => static::fileContainsAnonymousClass($path)) // Check to see if this is an anonymous class without 
+                ->map(fn ($path, $className) => [$path, $className])
+                ->values()
+                ->map(function ($item, $index): null|array {
 
-                    if (gettype($class = require($path)) !== 'object') {
-                        return null;
-                    }
+                    [$path, $className] = $item;
 
-                    $class = get_class($class);
+                    // $object = require_once($path);
+                    // dd(var_dump($object));
 
-                    if (! Str::contains($class, '@anonymous')) {
-                        return null;
-                    }
+                    // if (is_bool($object)) {
+                    //     return null;
+                    // }
 
-                    return [$className => $class];
+                    // if (! Str::contains($class = $object::class, '@anonymous')) {
+                    //     return null;
+                    // }
+
+                    // $id = Str::length(Str::remove('.', basename($path))) . '$f' . ($index + 1);
+
+                    return [$className => $path];
                 })
                 ->whereNotNull()
                 ->collapse()

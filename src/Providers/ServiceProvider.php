@@ -2,13 +2,13 @@
 
 namespace Blazervel\Blazervel\Providers;
 
-use Blazervel\Blazervel\Action;
 use Blazervel\Blazervel\Console\Commands\MakeActionCommand;
 use Blazervel\Blazervel\Console\Commands\MakeAnonymousActionCommand;
+use Blazervel\Blazervel\Console\Commands\TranspileAnonymousActionsCommand;
 use Blazervel\Blazervel\Support\Actions;
 use Illuminate\Foundation\AliasLoader;
-use Illuminate\Support\ServiceProvider as BaseServiceProvider;
 use Illuminate\Support\Str;
+use Illuminate\Support\ServiceProvider as BaseServiceProvider;
 
 class ServiceProvider extends BaseServiceProvider
 {
@@ -33,6 +33,7 @@ class ServiceProvider extends BaseServiceProvider
         $this->commands([
             MakeActionCommand::class,
             MakeAnonymousActionCommand::class,
+            TranspileAnonymousActionsCommand::class,
         ]);
 
         return $this;
@@ -45,11 +46,20 @@ class ServiceProvider extends BaseServiceProvider
         $this->app->booting(function ($app) use ($anonymousActionClasses) {
             $loader = AliasLoader::getInstance();
 
-            $loader->alias('BlazervelAction', Action::class);
+            $t = $anonymousActionClasses
+                ->map(fn ($class, $namespace) => (
+                    ($object = require_once($class)) !== true
+                        ? [$namespace => $object]
+                        : null
+                ))
+                ->whereNotNull()
+                ->collapse()
+                ->each(fn ($object, $namespace) => (
+                    $loader->alias($namespace, $object::class)
+                ))
+                ->map(fn ($object, $namespace) => $object::class);
 
-            $anonymousActionClasses->map(fn ($class, $namespace) => (
-                $loader->alias($namespace, $class)
-            ));
+            // dd($t->map(fn ($class) => class_exists("Blazervel\Blazervel\Action@anonymous\x00/Users/joshuaanderton/Sites/blazervel/app/Actions/Blazervel/" . (basename(Str::remove('.php', $class))) . '.php')));
         });
 
         return $this;
