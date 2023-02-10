@@ -1,0 +1,17 @@
+<?php declare (strict_types=1);
+
+namespace {{ namespace }};
+
+use Inertia\Inertia;
+use Inertia\Response;
+use Blazervel\Blazervel\Action;
+
+class {{ class }} extends Action
+{
+    public function __invoke(): Response
+    {
+        return Inertia::render(static::viewPath(), [
+            //
+        ]);
+    }
+}

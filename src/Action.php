@@ -5,12 +5,14 @@ namespace Blazervel\Blazervel;
 use Blazervel\Blazervel\Actions\Traits\HasAuthorize;
 use Blazervel\Blazervel\Actions\Traits\HasDispatch;
 use Blazervel\Blazervel\Actions\Traits\HasValidate;
+use Blazervel\Blazervel\Actions\Traits\HasViewPath;
 
 abstract class Action
 {
     use HasAuthorize,
         HasValidate,
-        HasDispatch;
+        HasDispatch,
+        HasViewPath;
 
     protected string $route;
 

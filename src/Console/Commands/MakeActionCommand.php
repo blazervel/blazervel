@@ -17,17 +17,19 @@ class MakeActionCommand extends GeneratorCommand
 
     protected bool $anonymous = false;
 
+    protected bool $inertia = false;
+
     protected function getStub()
     {
-        if ($this->anonymous === true) {
-            return $this->resolveStubPath(
-                '/../stubs/anonymous-action.stub'
-            );
+        $stubPath = '/../stubs/action.stub';
+
+        if ($this->inertia === true) {
+            $stubPath = '/../stubs/inertia-action.stub';
+        } elseif ($this->anonymous === true) {
+            $stubPath = '/../stubs/anonymous-action.stub';
         }
 
-        return $this->resolveStubPath(
-            '/../stubs/action.stub'
-        );
+        return $this->resolveStubPath($stubPath);
     }
 
     /**

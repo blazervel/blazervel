@@ -4,6 +4,7 @@ namespace Blazervel\Blazervel\Providers;
 
 use Blazervel\Blazervel\Console\Commands\MakeActionCommand;
 use Blazervel\Blazervel\Console\Commands\MakeAnonymousActionCommand;
+use Blazervel\Blazervel\Console\Commands\MakeInertiaActionCommand;
 use Blazervel\Blazervel\Console\Commands\TranspileAnonymousActionsCommand;
 use Blazervel\Blazervel\Support\Actions;
 use Illuminate\Foundation\AliasLoader;
@@ -32,6 +33,7 @@ class ServiceProvider extends BaseServiceProvider
 
         $this->commands([
             MakeActionCommand::class,
+            MakeInertiaActionCommand::class,
             MakeAnonymousActionCommand::class,
             TranspileAnonymousActionsCommand::class,
         ]);
